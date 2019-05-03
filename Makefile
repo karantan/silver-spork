@@ -2,10 +2,13 @@
 
 .DEFAULT_GOAL := .installed
 
-.PHONY: run
-run:
-	@pipenv run python -m silver_spork.main
+.PHONY: deploy
+deploy:
+	@pipenv run python -m silver_spork.main deploy
 
+.PHONY: destroy
+destroy:
+	@pipenv run python -m silver_spork.main destroy
 
 .PHONY: help
 help:
