@@ -2,7 +2,6 @@
 
 from enum import Enum
 
-
 KUBE_CONFIG = "k8s/kubeconfig.yaml"
 
 

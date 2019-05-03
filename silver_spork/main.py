@@ -4,13 +4,13 @@ from kubernetes import client
 from kubernetes import config
 from kubernetes import utils
 from kubernetes.stream import stream
+from kubernetes.watch import Watch
 from pprint import pprint
 from silver_spork.const import Deployments
 from silver_spork.const import KUBE_CONFIG
 from silver_spork.const import Secrets
 from silver_spork.const import Services
 from silver_spork.const import Storage
-from kubernetes.watch import Watch
 
 import click
 import structlog
