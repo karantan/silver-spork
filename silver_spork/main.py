@@ -16,6 +16,20 @@ import click
 import structlog
 import yaml
 
+structlog.configure(
+    processors=[
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.PositionalArgumentsFormatter(),
+        structlog.processors.TimeStamper(fmt="%Y-%m-%d %H:%M.%S"),
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
+        structlog.dev.ConsoleRenderer(),  # <===
+    ],
+    context_class=dict,
+    logger_factory=structlog.stdlib.LoggerFactory(),
+    wrapper_class=structlog.stdlib.BoundLogger,
+    cache_logger_on_first_use=True,
+)
 logger = structlog.get_logger(__name__)
 
 
@@ -30,13 +44,14 @@ def create_deployment(deployment_file):
 
         deployment_file (str): File path to yaml deployment file.
     """
+
     with open(deployment_file, "r") as f:
-        dep = yaml.safe_load(f)
+        yaml_file = yaml.safe_load(f)
         k8s_beta = client.AppsV1Api()
         resp = k8s_beta.create_namespaced_deployment(
-            body=dep, namespace="default", pretty="true"
+            body=yaml_file, namespace="default", pretty="true"
         )
-        logger.info(f"Deployment {dep['metadata']['name']} done.")
+        logger.info(f"Deployment {yaml_file['metadata']['name']} done.")
 
 
 def create_secret(secret_file):
@@ -50,13 +65,14 @@ def create_secret(secret_file):
 
         secret_file (str): File path to yaml secret file.
     """
+
     with open(secret_file, "r") as f:
-        dep = yaml.safe_load(f)
+        yaml_file = yaml.safe_load(f)
         k8s_beta = client.CoreV1Api()
         resp = k8s_beta.create_namespaced_secret(
-            body=dep, namespace="default", pretty="true"
+            body=yaml_file, namespace="default", pretty="true"
         )
-        logger.info(f"Secret {dep['metadata']['name']} configured.")
+        logger.info(f"Secret {yaml_file['metadata']['name']} configured.")
 
 
 def create_service(service_file):
@@ -70,13 +86,14 @@ def create_service(service_file):
 
         service_file (str): File path to yaml service file.
     """
+
     with open(service_file, "r") as f:
-        dep = yaml.safe_load(f)
+        yaml_file = yaml.safe_load(f)
         k8s_beta = client.CoreV1Api()
         resp = k8s_beta.create_namespaced_service(
-            body=dep, namespace="default", pretty="true"
+            body=yaml_file, namespace="default", pretty="true"
         )
-        logger.info(f"Service {dep['metadata']['name']} configured.")
+        logger.info(f"Service {yaml_file['metadata']['name']} configured.")
 
 
 def create_storage(storage_file):
@@ -90,22 +107,18 @@ def create_storage(storage_file):
 
         storage_file (str): File path to yaml storage file.
     """
+
     with open(storage_file, "r") as f:
-        dep = yaml.safe_load(f)
+        yaml_file = yaml.safe_load(f)
         k8s_beta = client.CoreV1Api()
         resp = k8s_beta.create_namespaced_persistent_volume_claim(
-            body=dep, namespace="default", pretty="true"
+            body=yaml_file, namespace="default", pretty="true"
         )
-        logger.info(f"Storage {dep['metadata']['name']} configured.")
+        logger.info(f"Storage {yaml_file['metadata']['name']} configured.")
 
 
-def run_deploy(config_file):
-    """Deploy a WP blog on Kubernetes cluster.
-
-    Args:
-        config_file (str): File path to the kube-config file.
-    """
-    config.load_kube_config(config_file=config_file)
+def run_deploy():
+    """Deploy a WP blog on Kubernetes cluster."""
 
     for secret in Secrets:
         create_secret(secret.value)
@@ -148,6 +161,7 @@ def delete_deployment(namespace, label):
         namespace (str): Namespace of the deployment.
         label (str): Label for selecting deployments. Example: "app=blog".
     """
+
     k8s_beta = client.AppsV1Api()
     resp = k8s_beta.delete_collection_namespaced_deployment(
         namespace=namespace, label_selector=label, pretty="true"
@@ -166,6 +180,7 @@ def delete_secret(namespace, label):
         namespace (str): Namespace of the secret.
         label (str): Label for selecting secret. Example: "app=blog".
     """
+
     k8s_beta = client.CoreV1Api()
     resp = k8s_beta.delete_collection_namespaced_secret(
         namespace=namespace, label_selector=label, pretty="true"
@@ -184,6 +199,7 @@ def delete_service(namespace, name):
         namespace (str): Namespace of the service.
         name (str): Name of the service.
     """
+
     k8s_beta = client.CoreV1Api()
     resp = k8s_beta.delete_namespaced_service(
         name=name, namespace=namespace, pretty="true"
@@ -202,6 +218,7 @@ def delete_storage(namespace, label):
         namespace (str): Namespace of the storage.
         label (str): Label for selecting storage. Example: "app=blog".
     """
+
     k8s_beta = client.CoreV1Api()
     resp = k8s_beta.delete_collection_namespaced_persistent_volume_claim(
         namespace=namespace, label_selector=label, pretty="true"
@@ -211,13 +228,8 @@ def delete_storage(namespace, label):
     )
 
 
-def run_destroy(config_file):
-    """Deploy a WP blog on Kubernetes cluster.
-
-    Args:
-        config_file (str): File path to the kube-config file.
-    """
-    config.load_kube_config(config_file=config_file)
+def run_destroy():
+    """Remove WP blog from Kubernetes cluster."""
 
     delete_deployment(namespace="default", label="app=blog")
     delete_secret(namespace="default", label="app=blog")
@@ -230,52 +242,45 @@ def run_destroy(config_file):
     delete_storage(namespace="default", label="app=blog")
 
 
-@click.command(help="")
-@click.option(
-    "--config",
-    type=click.Path(exists=True),
-    default=KUBE_CONFIG,
-    help="Path to kube-config yaml file.",
-    show_default=True,
-)
-def run(config):  # pragma: no cover
-    """Main entry point."""
-    destroy(config)
-
-
 @click.command()
-@click.option(
-    "--config",
-    type=click.Path(exists=True),
-    default=KUBE_CONFIG,
-    help="Path to kube-config yaml file.",
-    show_default=True,
-)
-def deploy(config):
+def deploy():
+    """Deploy a WP blog on a Kubernetes cluster."""
     logger.info("Deploying WP blog on DigitalOcean Kubernetes cluster ...")
-    run_deploy(config)
+    run_deploy()
 
 
 @click.command()
-@click.option(
-    "--config",
-    type=click.Path(exists=True),
-    default=KUBE_CONFIG,
-    help="Path to kube-config yaml file.",
-    show_default=True,
-)
-def destroy(config):
+def destroy():
+    """Remove WP blog from Kubernetes cluster."""
     logger.info("Removing WP blog from Kubernetes cluster ...")
-    run_destroy(config)
+    run_destroy()
 
 
 @click.group()
-def cli():
-    pass
+@click.option(
+    "--config_file",
+    type=click.Path(exists=True),
+    default=KUBE_CONFIG,
+    help="Path to kube-config yaml file.",
+    show_default=True,
+)
+def cli(config_file):
+    """Main entry point.
+
+    Args:
+        config_file (str): File path to the kube-config file.
+
+    """
+    try:
+        config.load_kube_config(config_file=config_file)
+    except Exception as e:
+        logger.error(
+            "Kubernetes configuration not set. `deploy` and `destroy` commands will not work"
+        )
 
 
 cli.add_command(deploy)
 cli.add_command(destroy)
 
-if __name__ == "__main__":  # pragma: no cover
+if __name__ == "__main__":
     cli()
