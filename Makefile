@@ -10,6 +10,10 @@ deploy:
 destroy:
 	@pipenv run python -m silver_spork.main destroy
 
+.PHONY: destroy
+list-blogs:
+	@pipenv run python -m silver_spork.main list-blogs
+
 .PHONY: help
 help:
 	@echo "Usage: make [target]\n"

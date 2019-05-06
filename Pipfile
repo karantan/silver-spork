@@ -16,6 +16,7 @@ structlog = "*"
 colorama = "*"
 kubernetes = "*"
 pyyaml = "*"
+tinydb = "*"
 
 [requires]
 python_version = "3.7"
